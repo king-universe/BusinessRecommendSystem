@@ -47,7 +47,7 @@ object DataLoader {
     sparkSession.sql("select * from ratings").head(10).map(row => println(row))
 
 
-    implicit val mongoConfig = MongoConfig("hadoop102:27017/recommender", "recommender")
+    implicit val mongoConfig = MongoConfig("mongodb://hadoop102:27017/recommender", "recommender")
     storeDataInMongoDB(productDF, ratingsDF)
 
     sc.stop()
@@ -67,7 +67,7 @@ object DataLoader {
 
     //将当前数据写入到MongoDB
     productDF.write.option("uri", mongoConfig.uri).option("collection", MONGODB_PRODUCT_COLLECTION).mode(SaveMode.Overwrite).format("com.mongodb.spark.sql").save()
-    productDF.write.option("uri", mongoConfig.uri).option("collection", MONGODB_RATING_COLLECTION).mode(SaveMode.Overwrite).format("com.mongodb.spark.sql").save()
+    ratingsDF.write.option("uri", mongoConfig.uri).option("collection", MONGODB_RATING_COLLECTION).mode(SaveMode.Overwrite).format("com.mongodb.spark.sql").save()
 
 
     productCollection.createIndex(MongoDBObject("productId" -> 1))
