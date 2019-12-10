@@ -14,7 +14,6 @@ import org.jblas.DoubleMatrix
 object OfflineRecommender {
 
 
-
   val SPARK_APPLICATION_NAME = "OfflineRecommender"
 
   // 定义常量
@@ -34,8 +33,6 @@ object OfflineRecommender {
 
     val conf = new SparkConf().setAppName(SPARK_APPLICATION_NAME).setMaster(args(0))
     val sparkSession = SparkSession.builder().config(conf).getOrCreate()
-
-    val sc = sparkSession.sparkContext
 
     val mongoConfig = MongoConfig(config("mongo.uri"), config("mongo.db"))
 
@@ -58,7 +55,7 @@ object OfflineRecommender {
 
     val tranData = ratingRDD.map(x => Rating(x._1, x._2, x._3.toFloat))
 
-    val (rank, iterations, lambda) = (50, 5, 0.01)
+    val (rank, iterations, lambda) = (500, 10, 0.001)
 
     // 调用ALS算法训练隐语义模型
     val model = ALS.train(tranData, rank, iterations, lambda)
@@ -70,7 +67,7 @@ object OfflineRecommender {
       case (productId, feature) => (productId, new DoubleMatrix(feature))
     }
 
-    productFeatures.cartesian(productFeatures).filter {
+    val productRecs = productFeatures.cartesian(productFeatures).filter {
       case (a, b) => (a._1 != b._1)
     }.map {
       case (a, b) => {
@@ -79,11 +76,15 @@ object OfflineRecommender {
       }
     }.filter(_._2._2 > 0.6)
       .groupByKey()
-      .map { case (productId, items) => ProductRecs(productId, items.toList.map(x => Recommendation(x._1, x._2))) }.toDF().show(100)
+      .map { case (productId, items) => ProductRecs(productId, items.toList.map(x => Recommendation(x._1, x._2))) }.toDF()
 
 
-/*
-
+    productRecs.write
+      .option("uri", mongoConfig.uri)
+      .option("collection", PRODUCT_RECS)
+      .mode("overwrite")
+      .format("com.mongodb.spark.sql")
+      .save()
 
 
     //计算用户推荐矩阵
@@ -107,7 +108,6 @@ object OfflineRecommender {
       .save()
 
     //TODO：计算商品相似度矩阵
-*/
 
     // 关闭spark
     sparkSession.stop()
@@ -115,8 +115,8 @@ object OfflineRecommender {
 
   }
 
-  def consinSim(product1: DoubleMatrix, product2: DoubleMatrix): Double ={
+  def consinSim(product1: DoubleMatrix, product2: DoubleMatrix): Double = {
     //norm2是指l2范数   就是1~n的平方和开根号  dot是向量的点乘
-    product1.dot(product2) / ( product1.norm2()  * product2.norm2() )
+    product1.dot(product2) / (product1.norm2() * product2.norm2())
   }
 }
