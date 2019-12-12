@@ -9,6 +9,10 @@ public class User {
     @JsonIgnore
     private String _id;
 
+    public void setUserId(int userId) {
+        this.userId = userId;
+    }
+
     private int userId;
 
     private String username;

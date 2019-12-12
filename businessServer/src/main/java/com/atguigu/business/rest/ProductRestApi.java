@@ -127,11 +127,12 @@ public class ProductRestApi {
         return model;
     }
 
-    // 离线推荐
+    // 离线推荐  这里userId全是hash值  需要自己设置userId取的推荐数据
     @RequestMapping(value = "/offline", produces = "application/json", method = RequestMethod.GET )
     @ResponseBody
     public Model getOfflineProducts(@RequestParam("username")String username,@RequestParam("num")int num, Model model) {
         User user = userService.findByUsername(username);
+        user.setUserId(206535);
         List<Recommendation> recommendations = recommenderService.getCollaborativeFilteringRecommendations(new UserRecommendationRequest(user.getUserId(), num));
         model.addAttribute("success",true);
         model.addAttribute("products", productService.getRecommendProducts(recommendations));
